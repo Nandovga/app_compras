@@ -1,43 +1,78 @@
-import {styles} from "./styles";
-import {Item} from "@/components/Item";
-import {Input} from "@/components/Input";
-import {Button} from "@/components/Button";
-import {Filter} from "@/components/Filter";
-import {FilterStatus} from "@/types/FilterStatus";
-import {FlatList, Image, Text, TouchableOpacity, View} from 'react-native';
+import { styles } from "./styles";
+import { Item } from "@/components/Item";
+import { Input } from "@/components/Input";
+import { useState, useEffect } from "react";
+import { Button } from "@/components/Button";
+import { Filter } from "@/components/Filter";
+import { FilterStatus } from "@/types/FilterStatus";
+import { ItemsStorage, itemsStorage } from "@/storage/itemsStorage"
+import { FlatList, Image, Text, TouchableOpacity, View, Alert } from 'react-native';
 
 const FILTER_STATUS: FilterStatus[] = [
     FilterStatus.PENDING,
     FilterStatus.DONE
 ]
-const ITEMS = [
-    {id: "1", status: FilterStatus.DONE, description: "Café Pilão"},
-    {id: "2", status: FilterStatus.PENDING, description: "Café Três corações"},
-    {id: "3", status: FilterStatus.PENDING, description: "Café Especial"},
-    {id: "4", status: FilterStatus.DONE, description: "Macarrão Santa Amalia"},
-];
 
 export function Home() {
+  const [filter, setFilter] = useState<FilterStatus>(FilterStatus.PENDING);
+  const [description, setDescription] = useState<string>("");
+  const [items, setItems] = useState<ItemsStorage[]>([]);
+
+  async function handleAdd() {
+      if (!description.trim()) {
+          return Alert.alert('Adicionar', 'Informe a descrição para adicionar.')
+      }
+      const newItem = {
+          id: Math.random().toString(36).substring(2),
+          description,
+          status: FilterStatus.PENDING
+      }
+
+      await itemsStorage.add(newItem);
+      await itensByStatus()
+      3 
+      Alert.alert('Adicionado', `Adicionado ${description}`)
+      setFilter(FilterStatus.PENDING)
+      setDescription("")
+  }
+
+  async function itensByStatus() {
+      try {
+          const response = await itemsStorage.getByStatus(filter);
+          setItems(response);
+      } catch (error) {
+          Alert.alert('Erro', 'Não foi possível carregar os itens.')
+      }
+  }
+
+  useEffect(() => {
+    itensByStatus()
+  }, [filter])
+
   return (
     <View style={styles.container}>
       <Image style={styles.logo}
              source={require('@/assets/logo.png')}/>
         <View style={styles.form}>
-            <Input placeholder="O que você precisa comprar?"/>
-            <Button title="Entrar"/>
+            <Input placeholder="O que você precisa comprar?"
+                   value={description}
+                   onChangeText={setDescription}/>
+            <Button title="Adicionar"
+                    onPress={handleAdd}/>
         </View>
         <View style={styles.content}>
             <View style={styles.header}>
                 {FILTER_STATUS.map((status) => (
-                    <Filter isActive
+                    <Filter isActive={status === filter}
                             key={status}
-                            status={status}/>
+                            status={status}
+                            onPress={() => setFilter(status)}/>
                 ))}
                 <TouchableOpacity style={styles.clearButton}>
                     <Text style={styles.clearText}>Limpar</Text>
                 </TouchableOpacity>
             </View>
-            <FlatList data={ITEMS}
+            <FlatList data={items}
                       ListEmptyComponent={() => <Text style={styles.empty}>Nenhum item aqui</Text>}
                       contentContainerStyle={styles.listContent}
                       ItemSeparatorComponent={() => <View style={styles.separator}/>}
