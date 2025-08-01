@@ -18,6 +18,15 @@ export function Home() {
   const [description, setDescription] = useState<string>("");
   const [items, setItems] = useState<ItemsStorage[]>([]);
 
+  async function itensByStatus() {
+        try {
+            const response = await itemsStorage.getByStatus(filter);
+            setItems(response);
+        } catch (error) {
+            Alert.alert('Erro', 'Não foi possível carregar os itens.')
+        }
+    }
+
   async function handleAdd() {
       if (!description.trim()) {
           return Alert.alert('Adicionar', 'Informe a descrição para adicionar.')
@@ -29,19 +38,41 @@ export function Home() {
       }
 
       await itemsStorage.add(newItem);
-      await itensByStatus()
-      3 
-      Alert.alert('Adicionado', `Adicionado ${description}`)
+      await itensByStatus();
+
       setFilter(FilterStatus.PENDING)
       setDescription("")
   }
 
-  async function itensByStatus() {
+  async function handleRemove(id: string) {
       try {
-          const response = await itemsStorage.getByStatus(filter);
-          setItems(response);
+          await itemsStorage.remove(id);
+          await itensByStatus();
       } catch (error) {
-          Alert.alert('Erro', 'Não foi possível carregar os itens.')
+          Alert.alert('Erro', 'Não foi possível remover o item.')
+      }
+  }
+
+  async function handleClear() {
+      try {
+          Alert.alert('Limpar', 'Tem certeza que deseja limpar todos os itens?', [
+              {text: "Não", style: "cancel"},
+              {text: "Sim", onPress: () => {
+                itemsStorage.clear();
+                setItems([]);
+              }}
+          ])
+      } catch (error) {
+          Alert.alert('Erro', 'Não foi possível limpar.')
+      }
+  }
+
+  async function handleToogleStatus(id: string) {
+      try {
+        await itemsStorage.toogleStatus(id);
+        await itensByStatus();
+      } catch (error) {
+          Alert.alert('Erro', 'Não foi possível alterar o status.')
       }
   }
 
@@ -68,7 +99,8 @@ export function Home() {
                             status={status}
                             onPress={() => setFilter(status)}/>
                 ))}
-                <TouchableOpacity style={styles.clearButton}>
+                <TouchableOpacity style={styles.clearButton}
+                                  onPress={handleClear}>
                     <Text style={styles.clearText}>Limpar</Text>
                 </TouchableOpacity>
             </View>
@@ -80,8 +112,8 @@ export function Home() {
                       keyExtractor={item => item.id}
                       renderItem={({item}) => (
                         <Item data={item}
-                              onStatus={console.log}
-                              onRemove={console.log}/>
+                              onStatus={() => handleToogleStatus(item.id)}
+                              onRemove={() => handleRemove(item.id)}/>
                       )}/>
         </View>
     </View>
